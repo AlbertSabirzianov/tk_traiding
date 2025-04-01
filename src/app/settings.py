@@ -9,6 +9,7 @@ class TradingViewSettings(BaseSettings):
 class StrategySettings(BaseSettings):
     profit_percent: float
     stopp_loss_percent: float
+    stocks: list[str]
 
 
 class TinkoffSettings(BaseSettings):
