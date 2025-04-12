@@ -36,3 +36,8 @@ class TinkoffSettings(BaseSettings):
     """
     tk_api_key: str
 
+
+class TelegramSettings(BaseSettings):
+
+    bot_token: str
+    chanel_name: str

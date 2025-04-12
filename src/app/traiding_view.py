@@ -2,11 +2,12 @@ from tradingview_ta import TA_Handler, Recommendation
 
 from .schema import StockAction
 from .settings import TradingViewSettings
-
+from .utils import connection_problems_decorator
 
 tradingview_settings = TradingViewSettings()
 
 
+@connection_problems_decorator
 def __get_stock_summary(stock: str) -> dict:
     """
     Получает сводный анализ по акции с использованием TradingView_TA.

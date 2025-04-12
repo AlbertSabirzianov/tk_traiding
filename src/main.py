@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from app.traiding_view import get_stock_actions
 from app.tinkoff_service import TkBroker
-from app.settings import TinkoffSettings, StrategySettings
+from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
 from app.schema import StockAction
 from app.exceptions import NotFreeCacheForTrading
 
