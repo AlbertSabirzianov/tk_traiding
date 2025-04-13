@@ -7,6 +7,7 @@ from app.tinkoff_service import TkBroker
 from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
 from app.schema import StockAction
 from app.exceptions import NotFreeCacheForTrading
+from app.telegram_mailing import TelegramChanelBot
 
 
 BUY = "BUY"
@@ -33,16 +34,26 @@ def main() -> None:
 
     tk_settings = TinkoffSettings()
     strategy_settings = StrategySettings()
+    telegram_settings = TelegramSettings()
 
     tk_broker = TkBroker(
         tok=tk_settings.tk_api_key
     )
+    telegram_chanel_bot = TelegramChanelBot(
+        bot_token=telegram_settings.bot_token,
+        channel_name=telegram_settings.chanel_name
+    )
+
+    telegram_chanel_bot.send_message(f"Start trading with {tk_broker.free_money_for_trading}")
+
     validated_tickers: list[str] = tk_broker.validate_tickers(strategy_settings.stocks)
     stock_actions: list[StockAction] = get_stock_actions(validated_tickers)
 
     if not stock_actions:
-        print("No recommendations to trading today")
+        telegram_chanel_bot.send_message("No recommendations to trading today")
         return
+    else:
+        telegram_chanel_bot.send_message(f"Stock actions\n {stock_actions}")
 
     while True:
         current_stock_action: StockAction = random.choice(stock_actions)
@@ -60,7 +71,7 @@ def main() -> None:
                     stop_loss_percent=strategy_settings.stopp_loss_percent
                 )
         except NotFreeCacheForTrading:
-            print("Take Positions to all money")
+            telegram_chanel_bot.send_message("Take Positions to all money")
             return
 
 
