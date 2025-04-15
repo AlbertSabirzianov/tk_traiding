@@ -73,6 +73,9 @@ def main() -> None:
         except NotFreeCacheForTrading:
             telegram_chanel_bot.send_message("Take Positions to all money")
             return
+        except Exception as err:
+            telegram_chanel_bot.send_message(f"Program finish with error\n {err}")
+            return
 
 
 if __name__ == "__main__":

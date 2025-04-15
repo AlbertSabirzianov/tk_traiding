@@ -2,7 +2,10 @@ import asyncio
 
 from telegram import Bot
 
+from .utils import connection_problems_decorator
 
+
+@connection_problems_decorator
 def send_message_to_telegram(bot_token: str, channel_name: str, message: str):
     """
     Отправляет сообщение в указанный канал Telegram.

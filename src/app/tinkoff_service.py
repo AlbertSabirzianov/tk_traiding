@@ -9,10 +9,13 @@ from tinkoff.invest import (Account, PortfolioResponse, PositionsResponse, GetOr
                             OperationsResponse, PostOrderResponse, PostStopOrderResponse)
 from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue
 from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
-from tinkoff.invest.schemas import OrderDirection, OrderType, StopOrderType, StopOrderDirection, StopOrderExpirationType, GetStopOrdersResponse
+from tinkoff.invest.schemas import (OrderDirection, OrderType, StopOrderType,
+                                    StopOrderDirection, StopOrderExpirationType,
+                                    GetStopOrdersResponse, ExchangeOrderType)
 from tinkoff.invest.utils import quotation_to_decimal, decimal_to_quotation, money_to_decimal
 
 from .exceptions import TickerNotExists, NotFreeCacheForTrading
+from .utils import connection_problems_decorator
 
 
 class TkBroker:
@@ -198,6 +201,7 @@ class TkBroker:
 
 
 @functools.lru_cache
+@connection_problems_decorator
 def get_instruments_df(token: str) -> DataFrame:
     with Client(token=token) as client:
         tickers = []
@@ -231,6 +235,7 @@ def get_instruments_df(token: str) -> DataFrame:
         return DataFrame(tickers)
 
 
+@connection_problems_decorator
 def get_last_price(token: str, target: str, figi: str) -> Decimal:
     with Client(token=token, target=target) as client:
         return quotation_to_decimal(
@@ -239,12 +244,14 @@ def get_last_price(token: str, target: str, figi: str) -> Decimal:
 
 
 @functools.lru_cache
+@connection_problems_decorator
 def get_account(token: str, target: str = INVEST_GRPC_API) -> Account:
     with Client(token=token, target=target) as client:
         account, *_ = client.users.get_accounts().accounts
         return account
 
 
+@connection_problems_decorator
 def close_all_stop_orders(token: str, target: str = INVEST_GRPC_API):
     with Client(token=token, target=target) as client:
         stop_orders_response: GetStopOrdersResponse = client.stop_orders.get_stop_orders(
@@ -257,21 +264,25 @@ def close_all_stop_orders(token: str, target: str = INVEST_GRPC_API):
             )
 
 
+@connection_problems_decorator
 def get_portfolio(token: str, target: str = INVEST_GRPC_API) -> PortfolioResponse:
     with Client(token=token, target=target) as client:
         return client.operations.get_portfolio(account_id=get_account(token, target).id)
 
 
+@connection_problems_decorator
 def get_positions(token: str,  target: str = INVEST_GRPC_API) -> PositionsResponse:
     with Client(token=token, target=target) as client:
         return client.operations.get_positions(account_id=get_account(token, target).id)
 
 
+@connection_problems_decorator
 def get_orders(token: str, target: str = INVEST_GRPC_API) -> GetOrdersResponse:
     with Client(token=token, target=target) as client:
         return client.orders.get_orders(account_id=get_account(token, target).id)
 
 
+@connection_problems_decorator
 def byu_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrderResponse:
     with Client(token=token, target=target) as client:
         return client.orders.post_order(
@@ -283,6 +294,7 @@ def byu_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrde
         )
 
 
+@connection_problems_decorator
 def sell_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrderResponse:
     with Client(token=token, target=target) as client:
         return client.orders.post_order(
@@ -294,6 +306,7 @@ def sell_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrd
         )
 
 
+@connection_problems_decorator
 def post_buy_take_profit(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -304,10 +317,12 @@ def post_buy_take_profit(token: str, target: str, figi: str, price: Decimal) -> 
             account_id=get_account(token=token, target=target).id,
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_BUY,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
-            stop_order_type=StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT
+            stop_order_type=StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT,
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
         )
 
 
+@connection_problems_decorator
 def post_sell_take_profit(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -318,10 +333,12 @@ def post_sell_take_profit(token: str, target: str, figi: str, price: Decimal) ->
             account_id=get_account(token=token, target=target).id,
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_SELL,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
-            stop_order_type=StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT
+            stop_order_type=StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT,
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
         )
 
 
+@connection_problems_decorator
 def post_buy_stop_loss(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -332,10 +349,12 @@ def post_buy_stop_loss(token: str, target: str, figi: str, price: Decimal) -> Po
             account_id=get_account(token=token, target=target).id,
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_BUY,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
-            stop_order_type=StopOrderType.STOP_ORDER_TYPE_STOP_LOSS
+            stop_order_type=StopOrderType.STOP_ORDER_TYPE_STOP_LOSS,
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
         )
 
 
+@connection_problems_decorator
 def post_sell_stop_loss(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -346,10 +365,12 @@ def post_sell_stop_loss(token: str, target: str, figi: str, price: Decimal) -> P
             account_id=get_account(token=token, target=target).id,
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_SELL,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
-            stop_order_type=StopOrderType.STOP_ORDER_TYPE_STOP_LOSS
+            stop_order_type=StopOrderType.STOP_ORDER_TYPE_STOP_LOSS,
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
         )
 
 
+@connection_problems_decorator
 def get_today_operations(token: str, target: str) -> OperationsResponse:
     with Client(token=token, target=target) as client:
         return client.operations.get_operations(
