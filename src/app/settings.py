@@ -38,6 +38,13 @@ class TinkoffSettings(BaseSettings):
 
 
 class TelegramSettings(BaseSettings):
+    """
+    Настройки телеграм бота для отправки уведомлений.
+
+    Атрибуты:
+        bot_token (str): токен телеграм бота.
+        chanel_name (str): имя телеграм канала, куда будет присылаться информация.
+    """
 
     bot_token: str
     chanel_name: str
