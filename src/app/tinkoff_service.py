@@ -371,12 +371,17 @@ def post_sell_stop_loss(token: str, target: str, figi: str, price: Decimal) -> P
 
 
 @connection_problems_decorator
-def get_today_operations(token: str, target: str) -> OperationsResponse:
+def get_operations(
+    token: str,
+    target: str,
+    from_: datetime.datetime,
+    to: datetime.datetime
+) -> OperationsResponse:
     with Client(token=token, target=target) as client:
         return client.operations.get_operations(
             account_id=get_account(token, target).id,
-            from_=datetime.datetime.now().replace(hour=0, minute=0, second=0),
-            to=datetime.datetime.now()
+            from_=from_,
+            to=to
         )
 
 

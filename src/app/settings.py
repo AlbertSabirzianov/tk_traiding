@@ -48,3 +48,13 @@ class TelegramSettings(BaseSettings):
 
     bot_token: str
     chanel_name: str
+
+
+class ReportSettings(BaseSettings):
+    """
+    Настройки отчёта по результатам торгов.
+
+    Атрибуты:
+        report_file_name (str): файл для записи результатов торгов.
+    """
+    report_file_name: str = "trading_results.csv"
