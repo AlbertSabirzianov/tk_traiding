@@ -385,6 +385,24 @@ def get_operations(
         )
 
 
+@connection_problems_decorator
+def is_market_open(token: str) -> bool:
+    with Client(token) as client:
+        # Получаем текущее время
+        now = datetime.datetime.now().replace(tzinfo=datetime.timezone.utc)
+        # Запрашиваем расписание торгов для Московской биржи
+        trading_schedules = client.instruments.trading_schedules(
+            exchange="MOEX"  # Указываем биржу (например, MOEX для Московской биржи)
+        )
+        for schedule in trading_schedules.exchanges:
+            for day in schedule.days:
+                # Проверяем, входит ли текущее время в рабочий интервал
+                if day.date.date() == now.date():
+                    if day.start_time <= now <= day.end_time and day.is_trading_day:
+                        return True  # Биржа открыта
+        return False  # Биржа закрыта
+
+
 def add_money_sandbox(token: str, money: float):
     with Client(token=token, target=INVEST_GRPC_API_SANDBOX) as client:
         money = decimal_to_quotation(Decimal(money))
