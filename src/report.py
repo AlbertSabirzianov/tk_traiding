@@ -9,7 +9,7 @@ from tinkoff.invest.constants import INVEST_GRPC_API
 from tinkoff.invest.utils import money_to_decimal
 
 from app.telegram_mailing import TelegramChanelBot
-from app.tinkoff_service import get_operations, TkBroker
+from app.tinkoff_service import get_operations, TkBroker, is_market_open
 from app.settings import TinkoffSettings, TelegramSettings, ReportSettings
 
 # Типы операций, относящиеся к комиссиям
@@ -124,6 +124,7 @@ def main() -> None:
         f"Trading Result today 📈\n"
         f"{icon}{round(trading_result + commissions, 2)} rub\n"
         f"{icon}{round(result_percent, 2)}%\n"
+        f"commissions {round(commissions, 2)}"
     )
     append_to_csv(
         date=datetime.datetime.now().strftime("%d.%m.%Y"),
