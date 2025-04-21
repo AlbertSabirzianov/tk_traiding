@@ -45,19 +45,17 @@ def main() -> None:
     )
 
     if is_market_open(token=tk_settings.tk_api_key):
-        telegram_chanel_bot.send_message(f"Start trading with {tk_broker.free_money_for_trading}")
+        print(f"Start trading with {tk_broker.free_money_for_trading}")
     else:
-        telegram_chanel_bot.send_message(f"Market is closed now")
+        print(f"Market is closed now")
         return
 
     validated_tickers: list[str] = tk_broker.validate_tickers(strategy_settings.stocks)
     stock_actions: list[StockAction] = get_stock_actions(validated_tickers)
 
     if not stock_actions:
-        telegram_chanel_bot.send_message("No recommendations to trading today")
+        print("No recommendations to trading today")
         return
-    else:
-        telegram_chanel_bot.send_message(f"Stock actions\n {stock_actions}")
 
     while True:
         current_stock_action: StockAction = random.choice(stock_actions)
@@ -75,7 +73,7 @@ def main() -> None:
                     stop_loss_percent=strategy_settings.stopp_loss_percent
                 )
         except NotFreeCacheForTrading:
-            telegram_chanel_bot.send_message("Take Positions to all money")
+            print("Take Positions to all money")
             return
         except Exception as err:
             telegram_chanel_bot.send_message(f"Program finish with error\n {err}")
