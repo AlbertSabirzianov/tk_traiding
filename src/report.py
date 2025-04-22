@@ -78,7 +78,7 @@ def main() -> None:
     operations: list[Operation] = get_operations(
         token=tk_settings.tk_api_key,
         target=INVEST_GRPC_API,
-        from_=datetime.datetime.now().replace(hour=0, minute=0, second=0),
+        from_=datetime.datetime.now() - datetime.timedelta(hours=24),
         to=datetime.datetime.now()
     ).operations
 
