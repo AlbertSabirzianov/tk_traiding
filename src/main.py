@@ -3,7 +3,7 @@ import random
 from dotenv import load_dotenv
 
 from app.traiding_view import get_stock_actions
-from app.tinkoff_service import TkBroker, is_market_open
+from app.tinkoff_service import TkBroker
 from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
 from app.schema import StockAction
 from app.exceptions import NotFreeCacheForTrading
@@ -43,12 +43,6 @@ def main() -> None:
         bot_token=telegram_settings.bot_token,
         channel_name=telegram_settings.chanel_name
     )
-
-    # if is_market_open(token=tk_settings.tk_api_key):
-    #     print(f"Start trading with {tk_broker.free_money_for_trading}")
-    # else:
-    #     print(f"Market is closed now")
-    #     return
 
     validated_tickers: list[str] = tk_broker.validate_tickers(strategy_settings.stocks)
     stock_actions: list[StockAction] = get_stock_actions(validated_tickers)
