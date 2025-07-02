@@ -2,21 +2,20 @@ import random
 
 from dotenv import load_dotenv
 
-from app.traiding_view import get_stock_actions
-from app.tinkoff_service import TkBroker
-from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
-from app.schema import StockAction
+from app.contains import BUY, SELL
 from app.exceptions import NotFreeCacheForTrading
+from app.recommendation_systems import ABCRecommendationSystem, ALL_RECOMMENDATION_SYSTEMS
+from app.schema import StockAction
+from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
 from app.telegram_mailing import TelegramChanelBot
-
-
-BUY = "BUY"
-SELL = "SELL"
+from app.tinkoff_service import TkBroker
+from app.utils import repeat_trading_with_time_interval_decorator
 
 load_dotenv()
 
 
-def main() -> None:
+@repeat_trading_with_time_interval_decorator(minutes=5)
+def main(recommendation_system: ABCRecommendationSystem) -> None:
     """
     Основная функция для автоматизации торговли.
 
@@ -45,7 +44,7 @@ def main() -> None:
     )
 
     validated_tickers: list[str] = tk_broker.validate_tickers(strategy_settings.stocks)
-    stock_actions: list[StockAction] = get_stock_actions(validated_tickers)
+    stock_actions: list[StockAction] = recommendation_system.get_stock_actions(validated_tickers)
 
     if not stock_actions:
         print("No recommendations to trading today")
@@ -75,4 +74,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    strategy_settings = StrategySettings()
+    assert strategy_settings.recommendation_system in ALL_RECOMMENDATION_SYSTEMS.keys()
+
+    main(
+        recommendation_system=ALL_RECOMMENDATION_SYSTEMS.get(
+            strategy_settings.recommendation_system
+        )
+    )

@@ -25,6 +25,7 @@ class StrategySettings(BaseSettings):
     profit_percent: float
     stopp_loss_percent: float
     stocks: list[str]
+    recommendation_system: str
 
 
 class TinkoffSettings(BaseSettings):
