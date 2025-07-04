@@ -21,6 +21,7 @@ class StrategySettings(BaseSettings):
         profit_percent (float): Целевая процентная прибыль для стратегии.
         stopp_loss_percent (float): Процент стоп-лосса для стратегии.
         stocks (list[str]): Список символов акций, на которые будет применяться стратегия.
+        recommendation_system (str): Система рекомендаций
     """
     profit_percent: float
     stopp_loss_percent: float
