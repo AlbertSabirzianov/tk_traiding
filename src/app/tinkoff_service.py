@@ -99,6 +99,23 @@ class TkBroker:
             raise TickerNotExists
         return self.shares_df[self.shares_df["ticker"] == ticker]["figi"].iloc[0]
 
+    def get_instrument_uid_from_ticker(self, ticker: str) -> str:
+        """
+        Получает UID инструмента по его тикеру.
+
+        Аргументы:
+            ticker (str): Тикер инструмента.
+
+        Возвращает:
+            str: FIGI инструмента.
+
+        Исключения:
+            TickerNotExists: Если тикер не существует.
+        """
+        if self.shares_df[self.shares_df["ticker"] == ticker].empty:
+            raise TickerNotExists
+        return self.shares_df[self.shares_df["ticker"] == ticker]["uid"].iloc[0]
+
     def get_order_book_by_ticker(self, ticker: str, depth: int = 50) -> GetOrderBookResponse:
         """
         Получает информацию о биржевом стакане инструмента п его тикеру
