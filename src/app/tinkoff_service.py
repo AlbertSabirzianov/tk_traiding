@@ -11,7 +11,7 @@ from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue
 from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
 from tinkoff.invest.schemas import (OrderDirection, OrderType, StopOrderType,
                                     StopOrderDirection, StopOrderExpirationType,
-                                    GetStopOrdersResponse, ExchangeOrderType)
+                                    GetStopOrdersResponse, ExchangeOrderType, GetOrderBookResponse)
 from tinkoff.invest.utils import quotation_to_decimal, decimal_to_quotation, money_to_decimal
 
 from .exceptions import TickerNotExists, NotFreeCacheForTrading
@@ -98,6 +98,27 @@ class TkBroker:
         if self.shares_df[self.shares_df["ticker"] == ticker].empty:
             raise TickerNotExists
         return self.shares_df[self.shares_df["ticker"] == ticker]["figi"].iloc[0]
+
+    def get_order_book_by_ticker(self, ticker: str, depth: int = 50) -> GetOrderBookResponse:
+        """
+        Получает информацию о биржевом стакане инструмента п его тикеру
+
+        Аргументы:
+            ticker (str): Тикер инструмента.
+            depth (int): Глубина стакана, по дефолту 50
+
+        Возвращает:
+            GetOrderBookResponse: Биржевой стакан инструмента.
+
+        Исключения:
+            TickerNotExists: Если тикер не существует.
+        """
+        return get_order_book(
+            token=self.token,
+            target=self.target,
+            figi=self.get_figi_by_ticker(ticker),
+            depth=depth
+        )
 
     def validate_tickers(self, stock_tickers: list[str]) -> list[str]:
         """
@@ -410,3 +431,14 @@ def add_money_sandbox(token: str, money: float):
             account_id=get_account(token, INVEST_GRPC_API_SANDBOX).id,
             amount=MoneyValue(units=money.units, nano=money.nano, currency="rub")
         )
+
+
+@connection_problems_decorator
+def get_order_book(token: str, target: str, figi: str, depth: int = 50) -> GetOrderBookResponse:
+    if depth < 0 or depth > 50:
+        depth = 50
+    with Client(token=token, target=target) as client:
+        return client.market_data.get_order_book(figi=figi, depth=depth)
+
+
+
