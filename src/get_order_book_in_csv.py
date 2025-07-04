@@ -23,18 +23,33 @@ def append_to_csv(data: pd.DataFrame, filename: str):
     :param data: Данные для записи
     :param filename: Имя CSV файла для записи.
     """
-
-    # Проверяем, существует ли файл
     if os.path.exists(filename):
-        # Если файл существует, добавляем данные в конец
         data.to_csv(filename, mode='a', header=False, index=False)
     else:
-        # Если файл не существует, создаем новый файл с заголовками
         data.to_csv(filename, mode='w', header=True, index=False)
 
 
 @repeat_trading_with_time_interval_decorator(minutes=1)
 def main():
+    """
+    Основная функция для сбора данных о биржевом стакане с использованием API Tinkoff.
+
+    Эта функция выполняет следующие действия:
+    1. Инициализирует настройки Tinkoff и стратегии.
+    2. Создает экземпляр брокера Tinkoff для взаимодействия с API.
+    3. Проверяет и валидирует тикеры акций, указанные в настройках стратегии.
+    4. Для каждого валидированного тикера:
+        - Получает данные о биржевом стакане.
+        - Создает DataFrame для хранения информации о ценах и объемах заявок.
+        - Заполняет DataFrame данными о последней цене, объемах заявок на покупку и продажу.
+        - Сохраняет данные в CSV файл с именем, основанным на тикере и текущей дате.
+
+    Декоратор `repeat_trading_with_time_interval_decorator` обеспечивает выполнение этой функции
+     с заданным интервалом времени (в данном случае, каждые 1 минуту).
+
+    Возвращаемое значение:
+        None
+    """
     tk_settings = TinkoffSettings()
     strategy_settings = StrategySettings()
 
