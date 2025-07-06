@@ -45,7 +45,7 @@ def is_trading_time() -> bool:
     return is_weekday and is_within_hours
 
 
-def repeat_trading_with_time_interval_decorator(minutes: int):
+def repeat_trading_with_time_interval_decorator(**time_interval_kwargs):
     """
     Декоратор для повторного выполнения функции торговли с указанным интервалом
     времени, но только в рабочие часы.
@@ -69,11 +69,11 @@ def repeat_trading_with_time_interval_decorator(minutes: int):
             while True:
                 if is_trading_time():
                     func(*args, **kwargs)
-                    time.sleep(datetime.timedelta(minutes=minutes).total_seconds())
+                    time.sleep(datetime.timedelta(**time_interval_kwargs).total_seconds())
                     continue
                 else:
                     print("Wait for stock market open...")
-                    time.sleep(datetime.timedelta(minutes=minutes).total_seconds())
+                    time.sleep(datetime.timedelta(**time_interval_kwargs).total_seconds())
                     continue
 
         return wrapper
