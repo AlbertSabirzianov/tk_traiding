@@ -29,7 +29,7 @@ def append_to_csv(data: pd.DataFrame, filename: str):
         data.to_csv(filename, mode='w', header=True, index=False)
 
 
-@repeat_trading_with_time_interval_decorator(minutes=1)
+@repeat_trading_with_time_interval_decorator(seconds=5)
 def main():
     """
     Основная функция для сбора данных о биржевом стакане с использованием API Tinkoff.
@@ -68,8 +68,8 @@ def main():
         ])
         new_row = {
             "price": quotation_to_decimal(order_book.last_price),
-            **{f'ask_{num}': order_book.asks[num - 1].quantity for num in range(1, 51)},
-            **{f'bid_{num}': order_book.bids[num - 1].quantity for num in range(1, 51)}
+            **{f'ask_{num + 1}': asc.quantity for num, asc in enumerate(order_book.asks)},
+            **{f'bid_{num + 1}': bid.quantity for num, bid in enumerate(order_book.bids)}
         }
         df.loc[0] = new_row
         append_to_csv(data=df, filename=f"{DATA_FOLDER}/{ticker}_{datetime.datetime.now().strftime('%d-%m-%Y')}.csv")
