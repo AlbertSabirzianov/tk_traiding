@@ -63,8 +63,7 @@ def main():
         df = pd.DataFrame(columns=[
             "price",
             *[f'ask_{num}' for num in range(1, 51)],
-            *[f'bid_{num}' for num in range(1, 51)],
-            "action"
+            *[f'bid_{num}' for num in range(1, 51)]
         ])
         new_row = {
             "price": quotation_to_decimal(order_book.last_price),
