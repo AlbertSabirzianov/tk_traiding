@@ -62,13 +62,23 @@ def main():
         order_book:  GetOrderBookResponse = tk_broker.get_order_book_by_ticker(ticker)
         df = pd.DataFrame(columns=[
             "price",
-            *[f'ask_{num}' for num in range(1, 51)],
-            *[f'bid_{num}' for num in range(1, 51)]
+            *[f'ask_q_{num}' for num in range(1, 51)],
+            *[f'bid_q_{num}' for num in range(1, 51)],
+            *[f'ask_pr_{num}' for num in range(1, 51)],
+            *[f'bid_pr_{num}' for num in range(1, 51)],
+            "close_price",
+            "limit_up",
+            "limit_down"
         ])
         new_row = {
             "price": quotation_to_decimal(order_book.last_price),
-            **{f'ask_{num + 1}': asc.quantity for num, asc in enumerate(order_book.asks)},
-            **{f'bid_{num + 1}': bid.quantity for num, bid in enumerate(order_book.bids)}
+            **{f'ask_q_{num + 1}': asc.quantity for num, asc in enumerate(order_book.asks)},
+            **{f'bid_q_{num + 1}': bid.quantity for num, bid in enumerate(order_book.bids)},
+            **{f'ask_pr_{num + 1}': quotation_to_decimal(asc.price) for num, asc in enumerate(order_book.asks)},
+            **{f'bid_pr_{num + 1}': quotation_to_decimal(bid.price) for num, bid in enumerate(order_book.bids)},
+            "close_price": quotation_to_decimal(order_book.close_price),
+            "limit_up": quotation_to_decimal(order_book.limit_up),
+            "limit_down": quotation_to_decimal(order_book.limit_down)
         }
         df.loc[0] = new_row
         append_to_csv(data=df, filename=f"{DATA_FOLDER}/{ticker}_{datetime.datetime.now().strftime('%d-%m-%Y')}.csv")
