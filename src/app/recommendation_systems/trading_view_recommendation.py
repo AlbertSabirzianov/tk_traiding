@@ -1,4 +1,4 @@
-from tradingview_ta import TA_Handler, Recommendation
+from tradingview_ta import TA_Handler, Recommendation, Interval
 
 from ..schema import StockAction
 from ..settings import TradingViewSettings
@@ -23,7 +23,7 @@ def get_stock_summary(stock: str) -> dict:
         symbol=stock,
         exchange=tradingview_settings.exchange,
         screener=tradingview_settings.screener,
-        interval='1d'
+        interval=Interval.INTERVAL_15_MINUTES
     )
     return handler.get_analysis().summary
 
