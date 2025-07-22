@@ -49,3 +49,43 @@ def get_actions(stop_loss_percent: float, take_profit_percent: float, prices: pd
                 continue
         actions.append("NOTHING")
     return pd.Series(actions, index=prices.index.to_list())
+
+
+def preprocess_data(data: pd.DataFrame, stop_loss_percent: float, take_profit_percent: float) -> pd.DataFrame:
+    """
+    Предобрабатывает входной DataFrame с данными о ценах,
+    очищая его от пропусков и добавляя колонку с торговыми действиями.
+
+    Функция удаляет строки с пропущенными значениями и вычисляет колонку "action" с рекомендациями по торговле
+    (например, "BUY", "SELL", "NOTHING") на основе заданных параметров стоп-лосса и тейк-профита.
+
+    Параметры:
+    ----------
+    data : pd.DataFrame
+        Исходный DataFrame, содержащий как минимум колонку "price" с ценами инструмента.
+    stop_loss_percent : float
+        Процент стоп-лосса для определения момента выхода из позиции с минимальными убытками.
+    take_profit_percent : float
+        Процент тейк-профита для определения момента фиксации прибыли.
+
+    Возвращает:
+    ----------
+    pd.DataFrame
+        Обработанный DataFrame с добавленной колонкой "action".
+    """
+    data = data.dropna()
+    data["action"] = get_actions(
+        stop_loss_percent=stop_loss_percent,
+        take_profit_percent=take_profit_percent,
+        prices=data["price"]
+    )
+    return data
+
+
+# def plot_historical_data(data: pd.DataFrame):
+#     plt.figure(figsize=(20, 15), dpi=200)
+#     sns.scatterplot(data=df_data, x=df_data.index, y='price', hue='action', palette={
+#         'NOTHING': 'blue',
+#         'SELL': 'red',
+#         'BUY': 'green'
+#     })
