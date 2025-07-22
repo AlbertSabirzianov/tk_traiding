@@ -1,32 +1,15 @@
-from tradingview_ta import TA_Handler, Analysis, Interval
+from decimal import Decimal
+from typing import Union
 
+from dotenv import load_dotenv
+
+from .interfaces import ABCRecommendationSystem
 from ..contains import SELL, BUY
 from ..schema import StockAction
-from ..settings import TradingViewSettings
-from ..utils import connection_problems_decorator
-from .interfaces import ABCRecommendationSystem
+from ..settings import TinkoffSettings
+from ..tinkoff_service import TkBroker
 
-tradingview_settings = TradingViewSettings()
-
-
-@connection_problems_decorator
-def get_stock_analysis(stock: str) -> Analysis:
-    """
-    Получает сводный анализ по акции с использованием TradingView_TA.
-
-    Args:
-        stock (str): Тикер акции.
-
-    Returns:
-        dict: Сводный анализ, содержащий рекомендации и другие данные.
-    """
-    handler = TA_Handler(
-        symbol=stock,
-        exchange=tradingview_settings.exchange,
-        screener=tradingview_settings.screener,
-        interval=Interval.INTERVAL_15_MINUTES
-    )
-    return handler.get_analysis()
+load_dotenv()
 
 
 class RSIRecommendationSystem(ABCRecommendationSystem):
@@ -45,18 +28,24 @@ class RSIRecommendationSystem(ABCRecommendationSystem):
         на основе значений RSI для каждой акции.
     """
     def get_stock_actions(self, stocks: list[str]) -> list[StockAction]:
+
+        tk_settings = TinkoffSettings()
+        tk_broker = TkBroker(
+            tok=tk_settings.tk_api_key
+        )
+
         stock_actions: list[StockAction] = []
 
         for ticker in stocks:
-            analysis: Analysis = get_stock_analysis(stock=ticker)
-            if analysis.indicators["RSI"] > 70:
+            rsi: Union[Decimal, float] = tk_broker.get_rsi_by_ticker(ticker)
+            if rsi > 70:
                 stock_actions.append(
                     StockAction(
                         ticker=ticker,
                         action=SELL
                     )
                 )
-            if analysis.indicators["RSI"] < 30:
+            if rsi < 30:
                 stock_actions.append(
                     StockAction(
                         ticker=ticker,

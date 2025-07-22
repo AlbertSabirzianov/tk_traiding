@@ -2,12 +2,14 @@ import datetime
 import functools
 import warnings
 from decimal import Decimal
+from typing import Union
 
 import numpy
 from pandas import DataFrame
+from ta.momentum import RSIIndicator
 from tinkoff.invest import (Account, PortfolioResponse, PositionsResponse, GetOrdersResponse,
                             OperationsResponse, PostOrderResponse, PostStopOrderResponse)
-from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue
+from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue, CandleInterval
 from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
 from tinkoff.invest.schemas import (OrderDirection, OrderType, StopOrderType,
                                     StopOrderDirection, StopOrderExpirationType,
@@ -33,6 +35,24 @@ class TkBroker:
         self.token: str = tok
         self.target: str = target
         self.shares_df: DataFrame = get_instruments_df(self.token)
+
+    def get_rsi_by_ticker(self, ticker: str) -> Union[Decimal, float]:
+        """
+        Расчитывает RSI Инструмента по его тикеру.
+
+        Аргументы:
+             ticker (str): тикер инструмента.
+
+        Возвращает:
+            Union[Decimal, float]: актуальный RSI инструмента.
+        """
+        figi = self.get_figi_by_ticker(ticker)
+        rsi_data: DataFrame = calculate_rsi_tinkoff(
+            figi=figi,
+            token=self.token
+        )
+        return rsi_data['rsi'].iloc[-1]
+
 
     @property
     def free_money_for_trading(self) -> Decimal:
@@ -458,4 +478,43 @@ def get_order_book(token: str, target: str, figi: str, depth: int = 50) -> GetOr
         return client.market_data.get_order_book(figi=figi, depth=depth)
 
 
+@connection_problems_decorator
+def calculate_rsi_tinkoff(figi: str, token: str, period_days: int = 10, rsi_window: int = 14) -> DataFrame:
+    """
+    Получает 15-минутные свечи по инструменту с заданным FIGI и рассчитывает RSI.
 
+    :param figi: FIGI инструмента (например, акции)
+    :param token: Токен для доступа к API Tinkoff Investments
+    :param period_days: Количество дней истории для загрузки свечей
+    :param rsi_window: Период RSI (обычно 14)
+    :return: pandas.DataFrame с колонками ['time', 'close', 'rsi']
+    """
+    with Client(token) as client:
+        # Определяем временной диапазон
+        to_time = datetime.datetime.now()
+        from_time = to_time - datetime.timedelta(days=period_days)
+
+        # Запрашиваем свечи с интервалом 15 минут
+        response = client.market_data.get_candles(
+            figi=figi,
+            from_=from_time,
+            to=to_time,
+            interval=CandleInterval.CANDLE_INTERVAL_15_MIN
+        )
+
+        candles = response.candles
+
+        if not candles:
+            raise ValueError("Свечи не найдены за указанный период")
+
+        # Формируем DataFrame с ценами закрытия и временем
+        data = DataFrame({
+            'time': [c.time for c in candles],
+            'close': [quotation_to_decimal(c.close) for c in candles]
+        })
+
+        # Рассчитываем RSI
+        rsi_indicator = RSIIndicator(close=data['close'], window=rsi_window)
+        data['rsi'] = rsi_indicator.rsi()
+
+        return data
