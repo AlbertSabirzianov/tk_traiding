@@ -53,7 +53,6 @@ class TkBroker:
         )
         return rsi_data['rsi'].iloc[-1]
 
-
     @property
     def free_money_for_trading(self) -> Decimal:
         """
@@ -175,7 +174,7 @@ class TkBroker:
             except TickerNotExists:
                 warnings.warn(f"Ticker {ticker} Not Exists!")
                 continue
-        return validated_tickers
+        return list(set(validated_tickers))
 
     def post_short_position(self, ticker: str, take_profit_percent: float, stop_loss_percent: float):
         """
