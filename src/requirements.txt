@@ -1,6 +1,6 @@
 tradingview-ta==3.3.0
 pydantic-settings==2.8.1
-tinkoff-investments==0.2.0b110
+tinkoff-investments==0.2.0b115
 pandas==2.2.3
 python-telegram-bot
 ta==0.11.0
