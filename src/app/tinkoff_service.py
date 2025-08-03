@@ -6,7 +6,7 @@ from typing import Union
 
 import numpy
 from pandas import DataFrame
-from ta.momentum import RSIIndicator
+from ta.momentum import RSIIndicator, StochRSIIndicator
 from tinkoff.invest import (Account, PortfolioResponse, PositionsResponse, GetOrdersResponse,
                             OperationsResponse, PostOrderResponse, PostStopOrderResponse)
 from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue, CandleInterval
@@ -52,6 +52,23 @@ class TkBroker:
             token=self.token
         )
         return rsi_data['rsi'].iloc[-1]
+
+    def get_stochastic_rsi_by_ticker(self, ticker: str) -> DataFrame:
+        """
+        Расчитывает StochasticRSI Инструмента по его тикеру.
+
+        Аргументы:
+             ticker (str): тикер инструмента.
+
+        Возвращает:
+            DataFrame c колонками ['stoch_rsi_k', 'stoch_rsi_d']
+        """
+        figi = self.get_figi_by_ticker(ticker)
+        stochastic_rsi_data: DataFrame = calculate_stochastic_rsi(
+            figi=figi,
+            token=self.token
+        )
+        return stochastic_rsi_data[['stoch_rsi_k', 'stoch_rsi_d']]
 
     @property
     def free_money_for_trading(self) -> Decimal:
@@ -517,3 +534,42 @@ def calculate_rsi_tinkoff(figi: str, token: str, period_days: int = 10, rsi_wind
         data['rsi'] = rsi_indicator.rsi()
 
         return data
+
+
+@connection_problems_decorator
+def calculate_stochastic_rsi(figi: str, token: str, period_days: int = 10) -> DataFrame:
+
+    with Client(token) as client:
+        to_time = datetime.datetime.now()
+        from_time = to_time - datetime.timedelta(days=period_days)
+
+        response = client.market_data.get_candles(
+            figi=figi,
+            from_=from_time,
+            to=to_time,
+            interval=CandleInterval.CANDLE_INTERVAL_15_MIN
+        )
+
+        candles = response.candles
+
+        if not candles:
+            raise ValueError("Свечи не найдены за указанный период")
+
+        data = [{
+            'time': candle.time,
+            'open': quotation_to_decimal(candle.open),
+            'high': quotation_to_decimal(candle.high),
+            'low': quotation_to_decimal(candle.low),
+            'close': quotation_to_decimal(candle.close),
+            'volume': candle.volume
+        } for candle in candles]
+
+        df = DataFrame(data)
+        df.set_index('time', inplace=True)
+
+        stoch_rsi_indicator = StochRSIIndicator(close=df['close'])
+        df['stoch_rsi'] = stoch_rsi_indicator.stochrsi()
+        df['stoch_rsi_k'] = stoch_rsi_indicator.stochrsi_k()
+        df['stoch_rsi_d'] = stoch_rsi_indicator.stochrsi_d()
+
+        return df
