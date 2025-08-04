@@ -5,6 +5,7 @@ from .interfaces import ABCRecommendationSystem
 from ..schema import StockAction
 from ..settings import TinkoffSettings
 from ..tinkoff_service import TkBroker
+from ..contains import SELL, BUY
 
 load_dotenv()
 
@@ -64,7 +65,7 @@ class StochasticRSIRecommendationSystem(ABCRecommendationSystem):
                 stock_actions.append(
                     StockAction(
                         ticker=ticker,
-                        action="BUY"
+                        action=BUY
                     )
                 )
 
@@ -72,7 +73,7 @@ class StochasticRSIRecommendationSystem(ABCRecommendationSystem):
                 stock_actions.append(
                     StockAction(
                         ticker=ticker,
-                        action="SELL"
+                        action=SELL
                     )
                 )
         return stock_actions

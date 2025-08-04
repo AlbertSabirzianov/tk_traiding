@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Union
 
 import numpy
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from ta.momentum import RSIIndicator, StochRSIIndicator
 from tinkoff.invest import (Account, PortfolioResponse, PositionsResponse, GetOrdersResponse,
                             OperationsResponse, PostOrderResponse, PostStopOrderResponse)
@@ -18,6 +18,7 @@ from tinkoff.invest.utils import quotation_to_decimal, decimal_to_quotation, mon
 
 from .exceptions import TickerNotExists, NotFreeCacheForTrading
 from .utils import connection_problems_decorator
+from .contains import *
 
 
 class TkBroker:
@@ -70,6 +71,21 @@ class TkBroker:
         )
         return stochastic_rsi_data[['stoch_rsi_k', 'stoch_rsi_d']]
 
+    def get_trend_by_ticker(self, ticker: str) -> Literal["UPTREND", "DOWNTREND"]:
+        """
+        Расчитывает Тренд Инструмента по его тикеру.
+
+        Аргументы:
+            ticker (str): тикер инструмента.
+
+        Возвращает:
+            Строку "UPTREND" или "DOWNTREND"
+        """
+        figi = self.get_figi_by_ticker(ticker)
+        return get_trend_by_figi(
+            token=self.token,
+            figi=figi
+        )
     @property
     def free_money_for_trading(self) -> Decimal:
         """
@@ -573,3 +589,50 @@ def calculate_stochastic_rsi(figi: str, token: str, period_days: int = 10) -> Da
         df['stoch_rsi_d'] = stoch_rsi_indicator.stochrsi_d()
 
         return df
+
+
+def get_trend_by_figi(token: str, figi: str, days: int = 30) -> Literal["UPTREND", "DOWNTREND"]:
+    """
+    Определяет общий тренд инструмента по FIGI на основе анализа последних дневных свечей.
+
+    Логика:
+    - Получаем последние `days` дневных свечей.
+    - Считаем среднюю цену закрытия за первую половину периода и за вторую.
+    - Если средняя цена закрытия во второй половине выше первой — тренд восходящий.
+    - Иначе — нисходящий.
+
+    :param token: API токен Tinkoff Investments
+    :param figi: FIGI инструмента
+    :param days: Количество дней для анализа (по умолчанию 30)
+    :return: "uptrend" или "downtrend"
+    """
+    with Client(token) as client:
+        to_ = datetime.datetime.now()
+        from_ = to_ - datetime.timedelta(days=days)  # Берём запас, чтобы получить нужное количество торговых дней
+        response = client.market_data.get_candles(
+            figi=figi,
+            from_=from_,
+            to=to_,
+            interval=CandleInterval.CANDLE_INTERVAL_DAY
+        )
+        candles = response.candles
+
+    if not candles:
+        raise ValueError(f"Недостаточно данных для анализа: получено {len(candles)} свечей, требуется {days}")
+
+    # Формируем DataFrame с ценами закрытия
+    data = []
+    for c in candles:  # Берём последние days свечей
+        close_price = quotation_to_decimal(c.close)
+        data.append(close_price)
+
+    closes = Series(data)
+
+    half = days // 2
+    first_half_avg = closes[:half].mean()
+    second_half_avg = closes[half:].mean()
+
+    if second_half_avg > first_half_avg:
+        return UPTREND
+    else:
+        return DOWNTREND
