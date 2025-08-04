@@ -591,6 +591,7 @@ def calculate_stochastic_rsi(figi: str, token: str, period_days: int = 10) -> Da
         return df
 
 
+@connection_problems_decorator
 def get_trend_by_figi(token: str, figi: str, days: int = 30) -> Literal["UPTREND", "DOWNTREND"]:
     """
     Определяет общий тренд инструмента по FIGI на основе анализа последних дневных свечей.
