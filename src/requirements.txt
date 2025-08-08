@@ -4,3 +4,4 @@ tinkoff-investments==0.2.0b115
 pandas==2.2.3
 python-telegram-bot
 ta==0.11.0
+cachetools
