@@ -6,3 +6,13 @@ class NotFreeCacheForTrading(Exception):
 class TickerNotExists(Exception):
     """Исключение, возникающее, когда запрашиваемый тикер не существует в системе."""
     pass
+
+
+class ShortPositionNotAvailable(Exception):
+    """Исключение, возникающее, когда short позиция не доступна."""
+    pass
+
+
+class LongPositionNotAvailable(Exception):
+    """Исключение, возникающее, когда long позиция не доступна."""
+    pass
