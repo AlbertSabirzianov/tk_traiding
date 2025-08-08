@@ -13,12 +13,26 @@ from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue, CandleInte
 from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
 from tinkoff.invest.schemas import (OrderDirection, OrderType, StopOrderType,
                                     StopOrderDirection, StopOrderExpirationType,
-                                    GetStopOrdersResponse, ExchangeOrderType, GetOrderBookResponse)
+                                    GetStopOrdersResponse, ExchangeOrderType, GetOrderBookResponse,
+                                    GetMarginAttributesResponse)
 from tinkoff.invest.utils import quotation_to_decimal, decimal_to_quotation, money_to_decimal
+from cachetools import cached, TTLCache
 
-from .exceptions import TickerNotExists, NotFreeCacheForTrading
+from .exceptions import *
 from .utils import connection_problems_decorator
 from .contains import *
+
+
+UNABLE_TRADING_STATUSES: list[str] = [
+    SecurityTradingStatus.SECURITY_TRADING_STATUS_UNSPECIFIED.name,
+    SecurityTradingStatus.SECURITY_TRADING_STATUS_NOT_AVAILABLE_FOR_TRADING.name,
+    SecurityTradingStatus.SECURITY_TRADING_STATUS_BREAK_IN_TRADING.name,
+    SecurityTradingStatus.SECURITY_TRADING_STATUS_SESSION_CLOSE.name,
+    SecurityTradingStatus.SECURITY_TRADING_STATUS_DEALER_NOT_AVAILABLE_FOR_TRADING.name
+]
+
+
+cache = TTLCache(maxsize=100, ttl=datetime.timedelta(minutes=30).seconds)
 
 
 class TkBroker:
@@ -86,6 +100,91 @@ class TkBroker:
             token=self.token,
             figi=figi
         )
+
+    def is_long_position_available(self, ticker: str) -> bool:
+        """
+        Проверяет, доступна ли возможность открытия лонг позиции по заданному инструменту.
+
+        Логика проверки включает:
+        - Флаг buy_available_flag должен быть True (доступна покупка).
+        - Статус торгов инструмента не должен входить в список запрещённых для торговли (UNABLE_TRADING_STATUSES).
+        - Флаг api_trade_available_flag должен быть True (торговля через API разрешена).
+
+        Если все условия выполняются, метод возвращает True, иначе — False.
+
+        Args:
+            ticker (str): Тикер инструмента для проверки.
+
+        Returns:
+            bool: True, если шорт позиция по инструменту доступна, False — если нет.
+        """
+        if not self.shares_df[self.shares_df["ticker"] == ticker]["buy_available_flag"].iloc[0]:
+            return False
+        if not self.is_ticker_available_for_trading(ticker):
+            return False
+        return True
+
+    def is_short_position_available(self, ticker: str) -> bool:
+        """
+        Проверяет, доступна ли возможность открытия шорт позиции по заданному инструменту.
+
+        Логика проверки включает:
+        1. Достаточность средств на счёте:
+           - Ликвидная стоимость портфеля должна быть не меньше начальной маржи.
+           - Уровень достаточности средств должен быть не ниже 1.
+           - Объем недостающих средств должен быть равен нулю или меньше.
+        2. Торговые ограничения по инструменту:
+           - Флаг short_enabled_flag должен быть True (разрешён шорт).
+           - Флаг sell_available_flag должен быть True (доступна продажа).
+           - Статус торгов инструмента не должен входить в список запрещённых для торговли (UNABLE_TRADING_STATUSES).
+           - Флаг api_trade_available_flag должен быть True (торговля через API разрешена).
+
+        Если все условия выполняются, метод возвращает True, иначе — False.
+
+        Args:
+            ticker (str): Тикер инструмента для проверки.
+
+        Returns:
+            bool: True, если шорт позиция по инструменту доступна, False — если нет.
+        """
+        margin_attributes: GetMarginAttributesResponse = get_margin_attributes(token=self.token)
+        if money_to_decimal(margin_attributes.liquid_portfolio) < money_to_decimal(margin_attributes.starting_margin):
+            return False
+        if quotation_to_decimal(margin_attributes.funds_sufficiency_level) < 1:
+            return False
+        if money_to_decimal(margin_attributes.amount_of_missing_funds) > 0:
+            return False
+
+        if not self.shares_df[self.shares_df["ticker"] == ticker]["short_enabled_flag"].iloc[0]:
+            return False
+        if not self.shares_df[self.shares_df["ticker"] == ticker]["sell_available_flag"].iloc[0]:
+            return False
+        if not self.is_ticker_available_for_trading(ticker):
+            return False
+        return True
+
+    def is_ticker_available_for_trading(self, ticker: str) -> bool:
+        """
+        Проверяет, доступна ли возможность торговли по заданному инструменту.
+
+        Логика проверки включает:
+        - Статус торгов инструмента не должен входить в список запрещённых для торговли (UNABLE_TRADING_STATUSES).
+        - Флаг api_trade_available_flag должен быть True (торговля через API разрешена).
+
+        Если все условия выполняются, метод возвращает True, иначе — False.
+
+        Args:
+            ticker (str): Тикер инструмента для проверки.
+
+        Returns:
+            bool: True, если торговля по инструменту доступна, False — если нет.
+        """
+        if self.shares_df[self.shares_df["ticker"] == ticker]["trading_status"].iloc[0] in UNABLE_TRADING_STATUSES:
+            return False
+        if not self.shares_df[self.shares_df["ticker"] == ticker]["api_trade_available_flag"].iloc[0]:
+            return False
+        return True
+
     @property
     def free_money_for_trading(self) -> Decimal:
         """
@@ -220,11 +319,14 @@ class TkBroker:
 
         Исключения:
             NotFreeCacheForTrading: Если недостаточно средств для торговли.
+            ShortPositionNotAvailable: Если инструмент не доступен для шорт позиции
         """
         figi: str = self.get_figi_by_ticker(ticker)
         last_price_for_lot: Decimal = self.get_last_price_for_lot(figi)
         if self.free_money_for_trading <= (last_price_for_lot * Decimal(1.01)):
             raise NotFreeCacheForTrading
+        if not self.is_short_position_available(ticker):
+            raise ShortPositionNotAvailable
 
         sell_order: PostOrderResponse = sell_market(figi, self.token, self.target)
         current_price: Decimal = money_to_decimal(sell_order.executed_order_price)
@@ -260,11 +362,14 @@ class TkBroker:
 
         Исключения:
             NotFreeCacheForTrading: Если недостаточно средств для торговли.
+            LongPositionNotAvailable: Если инструмент не доступен для лонг позиции
         """
         figi: str = self.get_figi_by_ticker(ticker)
         last_price_for_lot: Decimal = self.get_last_price_for_lot(figi)
         if self.free_money_for_trading <= (last_price_for_lot * Decimal(1.01)):
             raise NotFreeCacheForTrading
+        if not self.is_long_position_available(ticker):
+            raise LongPositionNotAvailable
 
         byu_order: PostOrderResponse = byu_market(figi, self.token, self.target)
         current_price: Decimal = money_to_decimal(byu_order.executed_order_price)
@@ -290,7 +395,7 @@ class TkBroker:
         )
 
 
-@functools.lru_cache
+@cached(cache)
 @connection_problems_decorator
 def get_instruments_df(token: str) -> DataFrame:
     with Client(token=token) as client:
@@ -637,3 +742,9 @@ def get_trend_by_figi(token: str, figi: str, days: int = 30) -> Literal["UPTREND
         return UPTREND
     else:
         return DOWNTREND
+
+
+@connection_problems_decorator
+def get_margin_attributes(token: str) -> GetMarginAttributesResponse:
+    with Client(token) as client:
+        return client.users.get_margin_attributes(account_id=get_account(token=token).id)

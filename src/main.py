@@ -3,7 +3,7 @@ import random
 from dotenv import load_dotenv
 
 from app.contains import BUY, SELL
-from app.exceptions import NotFreeCacheForTrading
+from app.exceptions import *
 from app.recommendation_systems import ABCRecommendationSystem, ALL_RECOMMENDATION_SYSTEMS
 from app.schema import StockAction
 from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
@@ -47,7 +47,7 @@ def main(recommendation_system: ABCRecommendationSystem) -> None:
     stock_actions: list[StockAction] = recommendation_system.get_stock_actions(validated_tickers)
 
     if not stock_actions:
-        print("No recommendations to trading today")
+        print("No recommendations to trading now")
         return
 
     while True:
@@ -68,6 +68,13 @@ def main(recommendation_system: ABCRecommendationSystem) -> None:
         except NotFreeCacheForTrading:
             print("Take Positions to all money")
             return
+        except (ShortPositionNotAvailable, LongPositionNotAvailable):
+            print(f"Action {current_stock_action} not available now")
+            stock_actions.remove(current_stock_action)
+            if not stock_actions:
+                return
+            continue
+
         except Exception as err:
             telegram_chanel_bot.send_message(f"Program finish with error\n {err}")
             return
