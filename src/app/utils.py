@@ -114,6 +114,6 @@ def truncate_file_if_too_long(file_name: str, max_lines: int = 1000) -> None:
     """
     with open(file_name, 'r', encoding='utf-8') as file:
         lines = file.readlines()
-    if len(lines) < max_lines:
+    if len(lines) > max_lines:
         with open(file_name, 'w', encoding='utf-8') as file:
             file.writelines(lines[len(lines)//2:])
