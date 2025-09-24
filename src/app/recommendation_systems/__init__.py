@@ -4,6 +4,7 @@ from .random_recommendation import RandomRecommendationSystem
 from .rsi_recommendation import RSIRecommendationSystem
 from .stochastic_rsi_recommendation import StochasticRSIRecommendationSystem
 from .only_by_trend_recommendation import OnlyByTrendRecommendationSystem
+from .moving_average_recommendation_system import MovingAverageRecommendationSystem
 
 ALL_RECOMMENDATION_SYSTEMS: dict[str, ABCRecommendationSystem] = {
     "trading_view": TradingViewRecommendationSystem(),
@@ -16,4 +17,5 @@ ALL_RECOMMENDATION_SYSTEMS: dict[str, ABCRecommendationSystem] = {
     "stoch_rsi_only_by_trend": OnlyByTrendRecommendationSystem(
         recommendation_system=StochasticRSIRecommendationSystem()
     ),
+    "moving_average": MovingAverageRecommendationSystem(),
 }

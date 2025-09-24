@@ -7,6 +7,7 @@ from typing import Union
 import numpy
 from pandas import DataFrame, Series
 from ta.momentum import RSIIndicator, StochRSIIndicator
+from ta.trend import EMAIndicator
 from tinkoff.invest import (Account, PortfolioResponse, PositionsResponse, GetOrdersResponse,
                             OperationsResponse, PostOrderResponse, PostStopOrderResponse)
 from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue, CandleInterval
@@ -67,6 +68,14 @@ class TkBroker:
             token=self.token
         )
         return rsi_data['rsi'].iloc[-1]
+
+    def get_ema_by_ticker(
+            self,
+            ticker: str,
+            candle_interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_15_MIN
+    ) -> DataFrame:
+        figi = self.get_figi_by_ticker(ticker)
+        return get_ema_tinkoff(figi=figi, token=self.token, candle_interval=candle_interval).dropna()
 
     def get_stochastic_rsi_by_ticker(self, ticker: str) -> DataFrame:
         """
@@ -658,6 +667,37 @@ def calculate_rsi_tinkoff(figi: str, token: str, period_days: int = 10, rsi_wind
         rsi_indicator = RSIIndicator(close=data['close'], window=rsi_window)
         data['rsi'] = rsi_indicator.rsi()
 
+        return data
+
+
+@connection_problems_decorator
+def get_ema_tinkoff(figi: str, token: str, candle_interval: CandleInterval, period_days: int = 10):
+    with Client(token) as client:
+        # Определяем временной диапазон
+        to_time = datetime.datetime.now()
+        from_time = to_time - datetime.timedelta(days=period_days)
+
+        # Запрашиваем свечи с интервалом 15 минут
+        response = client.market_data.get_candles(
+            figi=figi,
+            from_=from_time,
+            to=to_time,
+            interval=candle_interval
+        )
+
+        candles = response.candles
+
+        if not candles:
+            raise ValueError("Свечи не найдены за указанный период")
+
+        # Формируем DataFrame с ценами закрытия и временем
+        data = DataFrame({
+            'time': [c.time for c in candles],
+            'close': [quotation_to_decimal(c.close) for c in candles]
+        })
+
+        data["ema_short"] = EMAIndicator(close=data['close'], window=12).ema_indicator()
+        data["ema_long"] = EMAIndicator(close=data['close'], window=26).ema_indicator()
         return data
 
 
