@@ -19,7 +19,7 @@ from tinkoff.invest.utils import quotation_to_decimal, decimal_to_quotation, mon
 from cachetools import cached, TTLCache
 
 from .exceptions import *
-from .utils import connection_problems_decorator
+from .utils import connection_problems_decorator, loging_kwargs_decorator
 from .contains import *
 
 
@@ -502,6 +502,7 @@ def sell_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrd
 
 
 @connection_problems_decorator
+@loging_kwargs_decorator
 def post_buy_take_profit(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -518,6 +519,7 @@ def post_buy_take_profit(token: str, target: str, figi: str, price: Decimal) -> 
 
 
 @connection_problems_decorator
+@loging_kwargs_decorator
 def post_sell_take_profit(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -534,6 +536,7 @@ def post_sell_take_profit(token: str, target: str, figi: str, price: Decimal) ->
 
 
 @connection_problems_decorator
+@loging_kwargs_decorator
 def post_buy_stop_loss(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(
@@ -550,6 +553,7 @@ def post_buy_stop_loss(token: str, target: str, figi: str, price: Decimal) -> Po
 
 
 @connection_problems_decorator
+@loging_kwargs_decorator
 def post_sell_stop_loss(token: str, target: str, figi: str, price: Decimal) -> PostStopOrderResponse:
     with Client(token=token, target=target) as client:
         return client.stop_orders.post_stop_order(

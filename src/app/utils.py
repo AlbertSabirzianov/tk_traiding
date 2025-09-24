@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 
 
@@ -79,3 +80,40 @@ def repeat_trading_with_time_interval_decorator(**time_interval_kwargs):
         return wrapper
 
     return trading_only_in_working_time_decorator
+
+
+def loging_kwargs_decorator(func):
+    """
+    Декоратор для логирования вызова функции с отображением переданных позиционных и именованных аргументов.
+
+    При вызове обёрнутой функции в лог записывается её имя, а также значения args и kwargs.
+
+    Args:
+        func (callable): функция, которую необходимо обернуть.
+
+    Returns:
+        callable: обёрнутая функция с логированием вызова.
+    """
+    def wrapper(*args, **kwargs):
+        logging.info(f'{func.__name__}({args}, {kwargs})')
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def truncate_file_if_too_long(file_name: str, max_lines: int = 1000) -> None:
+    """
+    Контролирует размер файла по количеству строк и при превышении лимита
+    удаляет первую половину строк, оставляя вторую.
+
+    Args:
+        file_name (str): путь к файлу для проверки и обрезки.
+        max_lines (int): максимальное допустимое количество строк в файле.
+
+    Returns:
+        None
+    """
+    with open(file_name, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    if len(lines) < max_lines:
+        with open(file_name, 'w', encoding='utf-8') as file:
+            file.writelines(lines[len(lines)//2:])

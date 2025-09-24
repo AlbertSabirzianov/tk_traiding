@@ -1,4 +1,5 @@
 import random
+import logging
 
 from dotenv import load_dotenv
 
@@ -9,9 +10,16 @@ from app.schema import StockAction
 from app.settings import TinkoffSettings, StrategySettings, TelegramSettings
 from app.telegram_mailing import TelegramChanelBot
 from app.tinkoff_service import TkBroker
-from app.utils import repeat_trading_with_time_interval_decorator
+from app.utils import repeat_trading_with_time_interval_decorator, truncate_file_if_too_long
+
+LOG_FILE_NAME: str = 'logs.log'
 
 load_dotenv()
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename=LOG_FILE_NAME,
+)
 
 
 @repeat_trading_with_time_interval_decorator(minutes=5)
@@ -78,6 +86,8 @@ def main(recommendation_system: ABCRecommendationSystem) -> None:
         except Exception as err:
             telegram_chanel_bot.send_message(f"Program finish with error\n {err}")
             return
+        else:
+            truncate_file_if_too_long(file_name=LOG_FILE_NAME)
 
 
 if __name__ == "__main__":
