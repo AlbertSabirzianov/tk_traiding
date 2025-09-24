@@ -75,7 +75,7 @@ class TkBroker:
             candle_interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_15_MIN
     ) -> DataFrame:
         figi = self.get_figi_by_ticker(ticker)
-        return get_ema_tinkoff(figi=figi, token=self.token, candle_interval=candle_interval).dropna()
+        return get_ema_tinkoff(figi=figi, token=self.token, candle_interval=candle_interval, period_days=1).dropna()
 
     def get_stochastic_rsi_by_ticker(self, ticker: str) -> DataFrame:
         """

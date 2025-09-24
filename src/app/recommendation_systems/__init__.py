@@ -1,3 +1,5 @@
+from tinkoff.invest import CandleInterval
+
 from .interfaces import ABCRecommendationSystem
 from .trading_view_recommendation import TradingViewRecommendationSystem
 from .random_recommendation import RandomRecommendationSystem
@@ -18,4 +20,5 @@ ALL_RECOMMENDATION_SYSTEMS: dict[str, ABCRecommendationSystem] = {
         recommendation_system=StochasticRSIRecommendationSystem()
     ),
     "moving_average": MovingAverageRecommendationSystem(),
+    "moving_average_5_min": MovingAverageRecommendationSystem(candle_interval=CandleInterval.CANDLE_INTERVAL_5_MIN),
 }
