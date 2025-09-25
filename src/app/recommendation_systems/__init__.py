@@ -21,4 +21,7 @@ ALL_RECOMMENDATION_SYSTEMS: dict[str, ABCRecommendationSystem] = {
     ),
     "moving_average": MovingAverageRecommendationSystem(),
     "moving_average_5_min": MovingAverageRecommendationSystem(candle_interval=CandleInterval.CANDLE_INTERVAL_5_MIN),
+    "moving_average_5_min_only_by_trend": OnlyByTrendRecommendationSystem(
+        recommendation_system=MovingAverageRecommendationSystem(candle_interval=CandleInterval.CANDLE_INTERVAL_5_MIN)
+    )
 }
