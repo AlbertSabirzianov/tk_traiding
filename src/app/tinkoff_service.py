@@ -51,6 +51,30 @@ class TkBroker:
         self.token: str = tok
         self.target: str = target
         self.shares_df: DataFrame = get_instruments_df(self.token)
+        self.already_closed_figi = []
+
+    def close_long_positions_by_figi(self, figi: str) -> None:
+        if figi in self.already_closed_figi:
+            return
+        positions = get_positions(token=self.token, target=self.target)
+        for position in positions.securities:
+            if position.figi == figi and position.balance > 0:
+                lots: int = int(position.balance / int(self.shares_df[self.shares_df["figi"] == figi]["lot"].iloc[0]))
+                sell_market(figi=figi, token=self.token, target=self.target, quantity=lots)
+                break
+        self.already_closed_figi.append(figi)
+
+    def close_short_positions_by_figi(self, figi: str) -> None:
+        if figi in self.already_closed_figi:
+            return
+        positions = get_positions(token=self.token, target=self.target)
+        for position in positions.securities:
+            if position.figi == figi and position.balance < 0:
+                lots: int = abs(int(position.balance / int(self.shares_df[self.shares_df["figi"] == figi]["lot"].iloc[0])))
+                byu_market(figi=figi, token=self.token, target=self.target, quantity=lots)
+                break
+        self.already_closed_figi.append(figi)
+
 
     def get_rsi_by_ticker(self, ticker: str) -> Union[Decimal, float]:
         """
@@ -332,6 +356,7 @@ class TkBroker:
         """
         figi: str = self.get_figi_by_ticker(ticker)
         last_price_for_lot: Decimal = self.get_last_price_for_lot(figi)
+        self.close_long_positions_by_figi(figi=figi)
         if self.free_money_for_trading <= (last_price_for_lot * Decimal(1.01)):
             raise NotFreeCacheForTrading
         if not self.is_short_position_available(ticker):
@@ -375,6 +400,7 @@ class TkBroker:
         """
         figi: str = self.get_figi_by_ticker(ticker)
         last_price_for_lot: Decimal = self.get_last_price_for_lot(figi)
+        self.close_short_positions_by_figi(figi=figi)
         if self.free_money_for_trading <= (last_price_for_lot * Decimal(1.01)):
             raise NotFreeCacheForTrading
         if not self.is_long_position_available(ticker):
@@ -487,11 +513,11 @@ def get_orders(token: str, target: str = INVEST_GRPC_API) -> GetOrdersResponse:
 
 
 @connection_problems_decorator
-def byu_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrderResponse:
+def byu_market(figi: str, token: str, target: str = INVEST_GRPC_API, quantity: int = 1) -> PostOrderResponse:
     with Client(token=token, target=target) as client:
         return client.orders.post_order(
             figi=figi,
-            quantity=1,
+            quantity=quantity,
             direction=OrderDirection.ORDER_DIRECTION_BUY,
             account_id=get_account(token, target).id,
             order_type=OrderType.ORDER_TYPE_MARKET,
@@ -499,11 +525,11 @@ def byu_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrde
 
 
 @connection_problems_decorator
-def sell_market(figi: str, token: str, target: str = INVEST_GRPC_API) -> PostOrderResponse:
+def sell_market(figi: str, token: str, target: str = INVEST_GRPC_API, quantity: int = 1) -> PostOrderResponse:
     with Client(token=token, target=target) as client:
         return client.orders.post_order(
             figi=figi,
-            quantity=1,
+            quantity=quantity,
             direction=OrderDirection.ORDER_DIRECTION_SELL,
             account_id=get_account(token, target).id,
             order_type=OrderType.ORDER_TYPE_MARKET,
@@ -741,7 +767,12 @@ def calculate_stochastic_rsi(figi: str, token: str, period_days: int = 10) -> Da
 
 
 @connection_problems_decorator
-def get_trend_by_figi(token: str, figi: str, days: int = 30) -> Literal["UPTREND", "DOWNTREND"]:
+def get_trend_by_figi(
+    token: str,
+    figi: str,
+    days: int = 1,
+    candl_interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_15_MIN
+) -> Literal["UPTREND", "DOWNTREND"]:
     """
     Определяет общий тренд инструмента по FIGI на основе анализа последних дневных свечей.
 
@@ -751,6 +782,7 @@ def get_trend_by_figi(token: str, figi: str, days: int = 30) -> Literal["UPTREND
     - Если средняя цена закрытия во второй половине выше первой — тренд восходящий.
     - Иначе — нисходящий.
 
+    :param candl_interval:
     :param token: API токен Tinkoff Investments
     :param figi: FIGI инструмента
     :param days: Количество дней для анализа (по умолчанию 30)
@@ -763,7 +795,7 @@ def get_trend_by_figi(token: str, figi: str, days: int = 30) -> Literal["UPTREND
             figi=figi,
             from_=from_,
             to=to_,
-            interval=CandleInterval.CANDLE_INTERVAL_DAY
+            interval=candl_interval
         )
         candles = response.candles
 
