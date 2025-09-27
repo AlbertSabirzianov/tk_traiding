@@ -5,9 +5,9 @@ from decimal import Decimal
 from typing import Union
 
 import numpy
-from pandas import DataFrame, Series
+from pandas import DataFrame
 from ta.momentum import RSIIndicator, StochRSIIndicator
-from ta.trend import EMAIndicator
+from ta.trend import EMAIndicator, ADXIndicator
 from tinkoff.invest import (Account, PortfolioResponse, PositionsResponse, GetOrdersResponse,
                             OperationsResponse, PostOrderResponse, PostStopOrderResponse)
 from tinkoff.invest import Client, SecurityTradingStatus, MoneyValue, CandleInterval
@@ -790,13 +790,13 @@ def calculate_stochastic_rsi(figi: str, token: str, period_days: int = 10) -> Da
         return df
 
 
-@connection_problems_decorator
+#@connection_problems_decorator
 def get_trend_by_figi(
     token: str,
     figi: str,
     days: int = 1,
     candl_interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_15_MIN
-) -> Literal["UPTREND", "DOWNTREND"]:
+) -> Literal["UPTREND", "DOWNTREND", "NO_TREND"]:
     """
     Определяет общий тренд инструмента по FIGI на основе анализа последних дневных свечей.
 
@@ -826,23 +826,29 @@ def get_trend_by_figi(
     if not candles:
         raise ValueError(f"Недостаточно данных для анализа: получено {len(candles)} свечей, требуется {days}")
 
-    # Формируем DataFrame с ценами закрытия
-    data = []
-    for c in candles:  # Берём последние days свечей
-        close_price = quotation_to_decimal(c.close)
-        data.append(close_price)
+    data = [{
+        'time': candle.time,
+        'open': float(quotation_to_decimal(candle.open)),
+        'high': float(quotation_to_decimal(candle.high)),
+        'low': float(quotation_to_decimal(candle.low)),
+        'close': float(quotation_to_decimal(candle.close)),
+        'volume': candle.volume
+    } for candle in candles]
+    df = DataFrame(data).dropna()
 
-    closes = Series(data)
+    adx_indicator = ADXIndicator(high=df['high'], low=df['low'], close=df['close'], window=14)
+    df['adx'] = adx_indicator.adx()
+    df['plus_di'] = adx_indicator.adx_pos()
+    df['minus_di'] = adx_indicator.adx_neg()
 
-    half = days // 2
-    first_half_avg = closes[:half].mean()
-    second_half_avg = closes[half:].mean()
-
-    if second_half_avg > first_half_avg:
+    if df['adx'].iloc[-1] < 20:
+        return NO_TREND
+    elif df["plus_di"].iloc[-1] > df['minus_di'].iloc[-1]:
         return UPTREND
-    else:
+    elif df["plus_di"].iloc[-1] < df['minus_di'].iloc[-1]:
         return DOWNTREND
-
+    else:
+        return NO_TREND
 
 @connection_problems_decorator
 def get_margin_attributes(token: str) -> GetMarginAttributesResponse:

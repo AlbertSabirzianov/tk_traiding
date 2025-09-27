@@ -6,6 +6,7 @@
 - SELL: строковое значение "SELL", обозначающее сигнал на продажу.
 - UPTREND: строковое значение "UPTREND", обозначающее восходящий тренд на рынке.
 - DOWNTREND: строковое значение "DOWNTREND", обозначающее нисходящий тренд на рынке.
+- NO_TREND: строковое значение "NO_TREND", обозначающее без тренда.
 
 Использование Literal из typing гарантирует, что эти значения будут восприниматься как конкретные литералы строк,
 что помогает повысить безопасность типов и удобство автодополнения в редакторах кода.
@@ -19,3 +20,4 @@ BUY: Literal["BUY"] = "BUY"
 SELL: Literal["SELL"] = "SELL"
 UPTREND: Literal["UPTREND"] = "UPTREND"
 DOWNTREND: Literal["DOWNTREND"] = "DOWNTREND"
+NO_TREND: Literal["NO_TREND"] = "NO_TREND"
