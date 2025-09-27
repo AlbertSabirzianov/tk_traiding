@@ -22,7 +22,7 @@ logging.basicConfig(
 )
 
 
-@repeat_trading_with_time_interval_decorator(minutes=5)
+@repeat_trading_with_time_interval_decorator(minutes=1)
 def main(recommendation_system: ABCRecommendationSystem) -> None:
     """
     Основная функция для автоматизации торговли.
@@ -56,6 +56,7 @@ def main(recommendation_system: ABCRecommendationSystem) -> None:
 
     if not stock_actions:
         print("No recommendations to trading now")
+        truncate_file_if_too_long(file_name=LOG_FILE_NAME)
         return
 
     while True:
