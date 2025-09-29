@@ -142,7 +142,7 @@ class TkBroker:
         )
         return stochastic_rsi_data[['stoch_rsi_k', 'stoch_rsi_d']]
 
-    def get_trend_by_ticker(self, ticker: str) -> Literal["UPTREND", "DOWNTREND"]:
+    def get_trend_by_ticker(self, ticker: str) -> Literal["UPTREND", "DOWNTREND", "NO_TREND"]:
         """
         Расчитывает Тренд Инструмента по его тикеру.
 
