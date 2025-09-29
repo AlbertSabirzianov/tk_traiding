@@ -75,8 +75,12 @@ def main(recommendation_system: ABCRecommendationSystem) -> None:
                     stop_loss_percent=strategy_settings.stopp_loss_percent
                 )
         except NotFreeCacheForTrading:
-            print("Take Positions to all money")
-            return
+            stock_actions.remove(current_stock_action)
+            if not stock_actions:
+                print("Take Positions to all money")
+                return
+            continue
+
         except (ShortPositionNotAvailable, LongPositionNotAvailable):
             print(f"Action {current_stock_action} not available now")
             stock_actions.remove(current_stock_action)
