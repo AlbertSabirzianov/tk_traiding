@@ -42,14 +42,14 @@ class MovingAverageRecommendationSystem(ABCRecommendationSystem):
             ema_short = ema_data["ema_short"]
             ema_long = ema_data["ema_long"]
 
-            if ema_short.iloc[-1] > ema_long.iloc[-1] and ema_short.iloc[-2] <= ema_long.iloc[-2]:
+            if ema_short.iloc[-1] > ema_long.iloc[-1] and ema_short.iloc[-2] < ema_long.iloc[-2]:
                 stock_actions.append(
                     StockAction(
                         ticker=stock,
                         action=BUY
                     )
                 )
-            if ema_short.iloc[-1] < ema_long.iloc[-1] and ema_short.iloc[-2] >= ema_long.iloc[-2]:
+            if ema_short.iloc[-1] < ema_long.iloc[-1] and ema_short.iloc[-2] > ema_long.iloc[-2]:
                 stock_actions.append(
                     StockAction(
                         ticker=stock,
