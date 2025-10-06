@@ -53,6 +53,22 @@ class TkBroker:
         self.shares_df: DataFrame = get_instruments_df(self.token)
         self.already_closed_figi = []
 
+    def get_candles_from_ticker(
+        self,
+        ticker: str,
+        from_: datetime.datetime,
+        to_: datetime.datetime,
+        candl_interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_15_MIN
+    ) -> DataFrame:
+        figi = self.get_figi_by_ticker(ticker=ticker)
+        return get_candles(
+            token=self.token,
+            figi=figi,
+            from_=from_,
+            to_=to_,
+            candl_interval=candl_interval
+        )
+
     def close_long_positions_by_figi(self, figi: str) -> None:
         """
         Закрывает длинные позиции (лонги) по-заданному FIGI.
@@ -849,6 +865,37 @@ def get_trend_by_figi(
         return DOWNTREND
     else:
         return NO_TREND
+
+
+@connection_problems_decorator
+def get_candles(
+    token: str,
+    figi: str,
+    from_: datetime.datetime,
+    to_: datetime.datetime,
+    candl_interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_15_MIN
+) -> DataFrame:
+    with Client(token) as client:
+        response = client.market_data.get_candles(
+            figi=figi,
+            from_=from_,
+            to=to_,
+            interval=candl_interval
+        )
+        candles = response.candles
+
+    if not candles:
+        raise ValueError(f"Недостаточно данных для анализа: получено {len(candles)} свечей")
+
+    data = [{
+        'time': candle.time,
+        'open': float(quotation_to_decimal(candle.open)),
+        'high': float(quotation_to_decimal(candle.high)),
+        'low': float(quotation_to_decimal(candle.low)),
+        'close': float(quotation_to_decimal(candle.close)),
+        'volume': candle.volume
+    } for candle in candles]
+    return DataFrame(data).dropna()
 
 @connection_problems_decorator
 def get_margin_attributes(token: str) -> GetMarginAttributesResponse:
