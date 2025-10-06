@@ -5,3 +5,4 @@ pandas==2.2.3
 python-telegram-bot
 ta==0.11.0
 cachetools
+scikit-learn
