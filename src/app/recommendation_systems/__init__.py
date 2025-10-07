@@ -7,8 +7,10 @@ from .rsi_recommendation import RSIRecommendationSystem
 from .stochastic_rsi_recommendation import StochasticRSIRecommendationSystem
 from .only_by_trend_recommendation import OnlyByTrendRecommendationSystem
 from .moving_average_recommendation_system import MovingAverageRecommendationSystem
+from .logistic_model_recommendation_system import LogisticModelRecommendationSystem
 
 ALL_RECOMMENDATION_SYSTEMS: dict[str, ABCRecommendationSystem] = {
+    "logistic_model": LogisticModelRecommendationSystem(),
     "trading_view": TradingViewRecommendationSystem(),
     "random": RandomRecommendationSystem(),
     "rsi": RSIRecommendationSystem(),
