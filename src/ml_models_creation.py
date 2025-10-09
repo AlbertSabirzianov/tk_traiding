@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 from ta import add_all_ta_features
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegressionCV
 import joblib
 from tinkoff.invest import CandleInterval
 
@@ -12,18 +12,26 @@ from app.settings import TinkoffSettings, StrategySettings
 
 
 
-def get_actions(stop_loss_percent: float, take_profit_percent: float, prices: pd.Series) -> pd.Series:
+def get_actions(
+    stop_loss_percent: float,
+    take_profit_percent: float,
+    prices: pd.Series,
+    lows: pd.Series,
+    highs: pd.Series,
+) -> pd.Series:
     """
     Определяет торговые действия ("BUY", "SELL", "NOTHING")
-    для каждой цены в серии на основе заданных уровней стоп-лосса и тейк-профита.
+    для каждой цены в серии на основе заданных уровней стоп-лосса и тейк-профита,
+    используя данные о минимальных (lows) и максимальных (highs) ценах в будущем.
 
-    Для каждой цены из входной серии функция анализирует будущие цены и принимает решение:
+    Для каждой цены из входной серии функция анализирует будущие минимальные и максимальные цены
+    и принимает решение:
 
-    - "BUY" — если в будущем цена вырастет минимум на take_profit_percent %,
-       при этом не опустится ниже уровня стоп-лосса (stop_loss_percent % снижения).
+    - "BUY" — если в будущем максимальная цена вырастет минимум на take_profit_percent %,
+      при этом минимальная цена не опустится ниже уровня стоп-лосса (stop_loss_percent % снижения).
 
-    - "SELL" — если в будущем цена упадет минимум на take_profit_percent %,
-     при этом не поднимется выше уровня стоп-лосса (stop_loss_percent % роста).
+    - "SELL" — если в будущем минимальная цена упадет минимум на take_profit_percent %,
+      при этом максимальная цена не поднимется выше уровня стоп-лосса (stop_loss_percent % роста).
 
     - "NOTHING" — если ни одно из условий не выполнено.
 
@@ -31,6 +39,8 @@ def get_actions(stop_loss_percent: float, take_profit_percent: float, prices: pd
     stop_loss_percent (float): Процент стоп-лосса (например, 0.3 для 0.3%).
     take_profit_percent (float): Процент тейк-профита (например, 1.0 для 1%).
     prices (pd.Series): Серия с ценами акций, индекс которой отражает временной порядок.
+    lows (pd.Series): Серия с минимальными ценами за периоды, соответствующие индексам prices.
+    highs (pd.Series): Серия с максимальными ценами за периоды, соответствующие индексам prices.
 
     Возвращает:
     pd.Series: Серия с теми же индексами,
@@ -43,12 +53,10 @@ def get_actions(stop_loss_percent: float, take_profit_percent: float, prices: pd
         stop_loss_byu: float = price - price * (stop_loss_percent/100)
         stop_loss_sell: float = price + price * (stop_loss_percent/100)
 
-        future_prices: pd.Series = prices[index:]
-
-        take_profit_byu_prices = future_prices[future_prices >= take_profit_byu]
-        take_profit_sell_prices = future_prices[future_prices <= take_profit_sell]
-        stop_loss_byu_prices = future_prices[future_prices <= stop_loss_byu]
-        stop_loss_sell_prices = future_prices[future_prices >= stop_loss_sell]
+        take_profit_byu_prices = highs[index:][highs[index:] >= take_profit_byu]
+        take_profit_sell_prices = lows[index:][lows[index:] <= take_profit_sell]
+        stop_loss_byu_prices = lows[index:][lows[index:] <= stop_loss_byu]
+        stop_loss_sell_prices = highs[index:][highs[index:] >= stop_loss_sell]
 
         if not take_profit_byu_prices.empty:
             if stop_loss_byu_prices.empty or stop_loss_byu_prices.index[0] > take_profit_byu_prices.index[0]:
@@ -62,7 +70,10 @@ def get_actions(stop_loss_percent: float, take_profit_percent: float, prices: pd
     return pd.Series(actions, index=prices.index.to_list())
 
 
-def get_workday_time_ranges_last_days(days: int) -> list[tuple[datetime.datetime, datetime.datetime]]:
+def get_workday_time_ranges_last_days(
+    days: int,
+    offset_days: int = 0,
+) -> list[tuple[datetime.datetime, datetime.datetime]]:
     """
     Возвращает список кортежей с временными интервалами (с 7:00 утра до 23:00 вечера)
     для всех рабочих дней за последние заданное количество дней, включая сегодняшний день.
@@ -92,6 +103,8 @@ def get_workday_time_ranges_last_days(days: int) -> list[tuple[datetime.datetime
     from datetime import datetime, timedelta, time
 
     today = datetime.today()
+    if offset_days > 0:
+        today = today - timedelta(days=offset_days)
     first_day = today - timedelta(days=days)
 
     result = []
@@ -107,10 +120,59 @@ def get_workday_time_ranges_last_days(days: int) -> list[tuple[datetime.datetime
     return result
 
 
+def get_data(
+    ticker: str,
+    days: int,
+    offset_days: int = 0,
+):
+    tk_broker = TkBroker(tok=TinkoffSettings().tk_api_key)
+    if not tk_broker.validate_tickers(stock_tickers=[ticker]):
+        return
+
+    dfs = []
+    for start_day, end_day in get_workday_time_ranges_last_days(days=days, offset_days=offset_days):
+        dfs.append(
+            tk_broker.get_candles_from_ticker(
+                ticker=ticker,
+                from_=start_day,
+                to_=end_day,
+                candl_interval=CandleInterval.CANDLE_INTERVAL_5_MIN
+            )
+        )
+    df = pd.concat(dfs)
+
+    all_df = add_all_ta_features(
+        df,
+        open="open",  # noqa
+        high="high",
+        low="low",
+        close="close",
+        volume="volume"
+    )
+
+    all_df = all_df.drop("trend_psar_up", axis=1)
+    all_df = all_df.drop("trend_psar_down", axis=1)
+    all_df = all_df.dropna()
+
+    all_df["action"] = get_actions(
+        stop_loss_percent=StrategySettings().stopp_loss_percent,
+        take_profit_percent=StrategySettings().profit_percent,
+        prices=all_df["close"],
+        lows=all_df["low"],
+        highs=all_df["high"],
+    )
+    all_df = all_df.drop("time", axis=1)
+    print(f"len of data for {ticker} - {len(all_df)}")
+    print(f"{all_df['action'].value_counts()}")
+    return all_df
+
+
 def create_and_write_logistic_model_to_file(
     ticker: str,
     days: int,
     data_folder: str,
+    model,
+    offset_days: int = 0,
 ) -> None:
     """
     Создаёт и сохраняет модель логистической регрессии для заданного инструмента (тикера)
@@ -149,7 +211,7 @@ def create_and_write_logistic_model_to_file(
         return
 
     dfs = []
-    for start_day, end_day in get_workday_time_ranges_last_days(days=days):
+    for start_day, end_day in get_workday_time_ranges_last_days(days=days, offset_days=offset_days):
         dfs.append(
             tk_broker.get_candles_from_ticker(
                 ticker=ticker,
@@ -176,15 +238,18 @@ def create_and_write_logistic_model_to_file(
     all_df["action"] = get_actions(
         stop_loss_percent=StrategySettings().stopp_loss_percent,
         take_profit_percent=StrategySettings().profit_percent,
-        prices=all_df["close"]
+        prices=all_df["close"],
+        lows=all_df["low"],
+        highs=all_df["high"],
     )
     all_df = all_df.drop("time", axis=1)
+    print(f"len of data for {ticker} - {len(all_df)}")
+    print(f"{all_df['action'].value_counts()}")
 
     scaler = StandardScaler()
     scaler.fit(all_df.drop("action", axis=1))
     joblib.dump(scaler, f"{data_folder}/{ticker}_logistic_scaler.pkl")
 
-    model = LogisticRegression(max_iter=1000)
     model.fit(scaler.transform(all_df.drop("action", axis=1)), all_df["action"])
     joblib.dump(model, f"{data_folder}/{ticker}_logistic_model.pkl")
 
@@ -196,8 +261,10 @@ if __name__ == "__main__":
     strategy_settings = StrategySettings()
 
     for ticker in strategy_settings.stocks:
+        print(f"Create model for {ticker}")
         create_and_write_logistic_model_to_file(
             ticker=ticker,
-            days=30,
-            data_folder="DATA"
+            days=15,
+            data_folder="DATA",
+            model=LogisticRegressionCV(max_iter=10000, class_weight="balanced")
         )
