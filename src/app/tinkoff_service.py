@@ -589,7 +589,7 @@ def post_buy_take_profit(token: str, target: str, figi: str, price: Decimal) -> 
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_BUY,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
             stop_order_type=StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT,
-            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_LIMIT
         )
 
 
@@ -606,7 +606,7 @@ def post_sell_take_profit(token: str, target: str, figi: str, price: Decimal) ->
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_SELL,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
             stop_order_type=StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT,
-            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_LIMIT
         )
 
 
@@ -623,7 +623,7 @@ def post_buy_stop_loss(token: str, target: str, figi: str, price: Decimal) -> Po
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_BUY,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
             stop_order_type=StopOrderType.STOP_ORDER_TYPE_STOP_LOSS,
-            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_LIMIT
         )
 
 
@@ -640,7 +640,7 @@ def post_sell_stop_loss(token: str, target: str, figi: str, price: Decimal) -> P
             direction=StopOrderDirection.STOP_ORDER_DIRECTION_SELL,
             expiration_type=StopOrderExpirationType.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL,
             stop_order_type=StopOrderType.STOP_ORDER_TYPE_STOP_LOSS,
-            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_MARKET
+            exchange_order_type=ExchangeOrderType.EXCHANGE_ORDER_TYPE_LIMIT
         )
 
 
