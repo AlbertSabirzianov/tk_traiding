@@ -2,7 +2,7 @@ import datetime
 
 import pandas as pd
 from ta import add_all_ta_features
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.linear_model import LogisticRegressionCV
 import joblib
 from tinkoff.invest import CandleInterval
@@ -126,9 +126,6 @@ def get_data(
     offset_days: int = 0,
 ):
     tk_broker = TkBroker(tok=TinkoffSettings().tk_api_key)
-    if not tk_broker.validate_tickers(stock_tickers=[ticker]):
-        return
-
     dfs = []
     for start_day, end_day in get_workday_time_ranges_last_days(days=days, offset_days=offset_days):
         dfs.append(
@@ -172,6 +169,7 @@ def create_and_write_logistic_model_to_file(
     days: int,
     data_folder: str,
     model,
+    poly_features: PolynomialFeatures,
     offset_days: int = 0,
 ) -> None:
     """
@@ -210,47 +208,20 @@ def create_and_write_logistic_model_to_file(
     if not tk_broker.validate_tickers(stock_tickers=[ticker]):
         return
 
-    dfs = []
-    for start_day, end_day in get_workday_time_ranges_last_days(days=days, offset_days=offset_days):
-        dfs.append(
-            tk_broker.get_candles_from_ticker(
-                ticker=ticker,
-                from_=start_day,
-                to_=end_day,
-                candl_interval=CandleInterval.CANDLE_INTERVAL_5_MIN
-            )
-        )
-    df = pd.concat(dfs)
-
-    all_df = add_all_ta_features(
-        df,
-        open="open",  # noqa
-        high="high",
-        low="low",
-        close="close",
-        volume="volume"
+    all_df = get_data(
+        ticker=ticker,
+        days=days,
+        offset_days=offset_days,
     )
 
-    all_df = all_df.drop("trend_psar_up", axis=1)
-    all_df = all_df.drop("trend_psar_down", axis=1)
-    all_df = all_df.dropna()
-
-    all_df["action"] = get_actions(
-        stop_loss_percent=StrategySettings().stopp_loss_percent,
-        take_profit_percent=StrategySettings().profit_percent,
-        prices=all_df["close"],
-        lows=all_df["low"],
-        highs=all_df["high"],
-    )
-    all_df = all_df.drop("time", axis=1)
-    print(f"len of data for {ticker} - {len(all_df)}")
-    print(f"{all_df['action'].value_counts()}")
+    X = poly_features.fit_transform(all_df.drop("action", axis=1))
+    joblib.dump(poly_features, f"{data_folder}/{ticker}_logistic_poly.pkl")
 
     scaler = StandardScaler()
-    scaler.fit(all_df.drop("action", axis=1))
+    scaler.fit(X)
     joblib.dump(scaler, f"{data_folder}/{ticker}_logistic_scaler.pkl")
 
-    model.fit(scaler.transform(all_df.drop("action", axis=1)), all_df["action"])
+    model.fit(scaler.transform(X), all_df["action"])
     joblib.dump(model, f"{data_folder}/{ticker}_logistic_model.pkl")
 
 
@@ -264,7 +235,8 @@ if __name__ == "__main__":
         print(f"Create model for {ticker}")
         create_and_write_logistic_model_to_file(
             ticker=ticker,
-            days=15,
+            days=7,
             data_folder="DATA",
-            model=LogisticRegressionCV(max_iter=10000, class_weight="balanced")
+            model=LogisticRegressionCV(max_iter=10000, class_weight="balanced"),
+            poly_features=PolynomialFeatures(2, include_bias=False),
         )

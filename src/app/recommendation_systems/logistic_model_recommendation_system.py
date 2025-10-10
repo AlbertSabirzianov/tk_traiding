@@ -62,6 +62,7 @@ class LogisticModelRecommendationSystem(ABCRecommendationSystem):
         for ticker in stocks:
             scaler = joblib.load(f"DATA/{ticker}_logistic_scaler.pkl")
             model = joblib.load(f"DATA/{ticker}_logistic_model.pkl")
+            poly = joblib.load(f"DATA/{ticker}_logistic_poly.pkl")
 
             tk_broker = TkBroker(tok=TinkoffSettings().tk_api_key)
             df = tk_broker.get_candles_from_ticker(
@@ -72,7 +73,7 @@ class LogisticModelRecommendationSystem(ABCRecommendationSystem):
             )
 
             all_df = self.prepare_data(df)
-            predict = model.predict(scaler.transform(all_df))
+            predict = model.predict(scaler.transform(poly.transform(all_df)))
 
             if predict[-1] == BUY:
                 stock_actions.append(
