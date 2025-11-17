@@ -158,7 +158,11 @@ class TkBroker:
         )
         return stochastic_rsi_data[['stoch_rsi_k', 'stoch_rsi_d']]
 
-    def get_trend_by_ticker(self, ticker: str) -> Literal["UPTREND", "DOWNTREND", "NO_TREND"]:
+    def get_trend_by_ticker(
+        self,
+        ticker: str,
+        candle_interval = CandleInterval.CANDLE_INTERVAL_15_MIN
+    ) -> Literal["UPTREND", "DOWNTREND", "NO_TREND"]:
         """
         Расчитывает Тренд Инструмента по его тикеру.
 
@@ -171,7 +175,8 @@ class TkBroker:
         figi = self.get_figi_by_ticker(ticker)
         return get_trend_by_figi(
             token=self.token,
-            figi=figi
+            figi=figi,
+            candl_interval=candle_interval
         )
 
     def is_long_position_available(self, ticker: str) -> bool:
